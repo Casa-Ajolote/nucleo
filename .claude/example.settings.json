@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "hook": ".claude/hooks/pre-commit-validation.sh",
+        "description": "TypeScript typecheck before commit"
+      },
+      {
+        "matcher": "Bash(git commit*)",
+        "hook": ".claude/hooks/security-scan.sh",
+        "description": "Scan for secrets and security issues before commit"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hook": ".claude/hooks/auto-format.sh",
+        "description": "Auto-format edited files with Prettier"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hook": ".claude/hooks/test-runner.sh",
+        "description": "Run related tests after file changes"
+      },
+      {
+        "matcher": "*",
+        "hook": ".claude/hooks/cost-tracker.sh",
+        "description": "Track tool usage for cost awareness"
+      },
+      {
+        "matcher": "*",
+        "hook": ".claude/hooks/log-tool-usage.sh",
+        "description": "Audit log of all tool executions"
+      }
+    ],
+    "Stop": [
+      {
+        "hook": ".claude/hooks/stop-hook.sh",
+        "description": "Review Loop — multi-agent code review on session end"
+      }
+    ]
+  }
+}

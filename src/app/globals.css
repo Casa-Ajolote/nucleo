@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Canvas */
+  --color-canvas: #ffffff;
+  --color-sidebar: #f7f6f3;
+  --color-hover: #ebebea;
+  --color-selected: #e8f0fd;
+
+  /* Accent */
+  --color-accent: #2383e2;
+  --color-accent-hover: #1d6ec7;
+
+  /* Text */
+  --color-ink: #37352f;
+  --color-muted: #787774;
+  --color-placeholder: #9b9a97;
+
+  /* Border */
+  --color-border: #e3e2e0;
+
+  /* Functional */
+  --color-success: #0f7b6c;
+  --color-error: #eb5757;
+  --color-warning: #dfab01;
+
+  /* Typography */
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 18px;
+  --font-size-lg: 24px;
+
+  /* Spacing */
+  --sidebar-width: 240px;
+  --fab-size: 48px;
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-open: 200ms;
+  --ease-standard: ease;
+  --ease-open: ease-out;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-2 w-full px-2 py-1.5 rounded text-sm text-left transition-colors duration-150;
+    color: var(--color-muted);
+  }
+
+  .sidebar-item:hover {
+    background-color: var(--color-hover);
+    color: var(--color-ink);
+  }
+
+  .sidebar-item.active {
+    background-color: var(--color-selected);
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+
+  .sidebar-section-header {
+    @apply px-2 py-1 text-xs font-medium tracking-widest uppercase;
+    color: var(--color-placeholder);
+    font-size: 11px;
+  }
+
+  .fab {
+    @apply fixed bottom-6 right-6 flex items-center justify-center rounded-full shadow-md transition-all duration-150;
+    width: var(--fab-size);
+    height: var(--fab-size);
+    background-color: var(--color-accent);
+    color: #ffffff;
+    z-index: 50;
+  }
+
+  .fab:hover {
+    background-color: var(--color-accent-hover);
+    box-shadow: 0 4px 12px rgba(35, 131, 226, 0.35);
+  }
+
+  .fab:active {
+    transform: scale(0.96);
+  }
+}

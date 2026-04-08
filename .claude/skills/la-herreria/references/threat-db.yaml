@@ -1,0 +1,815 @@
+# ============================================================
+# Forge — Threat Database
+# ============================================================
+# Structured threat entries for Security Audit (Skill #9).
+# Categories: owasp-2025, vibe-coding, mcp-security, golden-path,
+#             infrastructure, blog-security-tips, data-privacy
+#
+# Each entry: id, category, name, description, severity,
+#             owasp (mapping), golden_path_check, mitigation, automated
+#
+# automated: true = security-scan.sh hook can detect this
+# ============================================================
+
+version: "1.0.0"
+last_updated: "2026-03-16"
+
+threats:
+
+  # ========================================
+  # OWASP 2025 — Next.js + Supabase specific
+  # ========================================
+
+  - id: OWASP-A01-001
+    category: owasp-2025
+    name: "Missing RLS on user tables"
+    description: "Supabase tables with user data lack Row Level Security policies, allowing cross-tenant data access."
+    severity: critical
+    owasp: "A01:2025"
+    golden_path_check: "SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' — all user tables must show true"
+    mitigation: "Enable RLS on every table. Add policies with auth.uid() filtering."
+    automated: false
+
+  - id: OWASP-A01-002
+    category: owasp-2025
+    name: "Client-provided user ID trusted"
+    description: "API route uses body.userId or query param instead of session-authenticated user ID."
+    severity: critical
+    owasp: "A01:2025"
+    golden_path_check: "grep -r 'body.userId\\|req.query.userId\\|params.userId' src/"
+    mitigation: "Always use supabase.auth.getUser() to get the authenticated user ID."
+    automated: false
+
+  - id: OWASP-A01-003
+    category: owasp-2025
+    name: "Admin endpoints without role check"
+    description: "Admin API routes or Server Actions don't verify the user's role before executing."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Search for /admin or /api/admin routes without role verification"
+    mitigation: "Add role check middleware. Verify role from DB, not from client-provided claims."
+    automated: false
+
+  - id: OWASP-A01-004
+    category: owasp-2025
+    name: "Overly permissive RLS policy"
+    description: "RLS policy uses 'true' for SELECT without scoping to auth.uid(), making all rows visible."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Review all RLS policies — any using 'true' without auth.uid() scoping"
+    mitigation: "Scope all user-facing policies to auth.uid() = user_id."
+    automated: false
+
+  - id: OWASP-A02-001
+    category: owasp-2025
+    name: "Secrets in localStorage"
+    description: "Auth tokens or API keys stored in localStorage, accessible to XSS attacks."
+    severity: high
+    owasp: "A02:2025"
+    golden_path_check: "grep -r 'localStorage' src/ | grep -i 'token\\|auth\\|session\\|key'"
+    mitigation: "Use httpOnly cookies for auth tokens. Supabase handles this with pkce flow."
+    automated: true
+
+  - id: OWASP-A02-002
+    category: owasp-2025
+    name: "Secrets logged to console"
+    description: "Tokens, passwords, or API keys appear in console.log statements."
+    severity: high
+    owasp: "A02:2025"
+    golden_path_check: "grep -r 'console.log' src/ | grep -i 'token\\|password\\|secret\\|key'"
+    mitigation: "Remove all console.log with sensitive data. Use structured server-side logging."
+    automated: true
+
+  - id: OWASP-A02-003
+    category: owasp-2025
+    name: "Rolling own auth instead of Supabase Auth"
+    description: "Custom password hashing, session management, or token generation instead of using Supabase Auth."
+    severity: critical
+    owasp: "A02:2025"
+    golden_path_check: "Search for bcrypt, crypto.createHash, jwt.sign in src/ — should not exist"
+    mitigation: "Use Supabase Auth for all authentication. Never implement custom password handling."
+    automated: false
+
+  - id: OWASP-A03-001
+    category: owasp-2025
+    name: "Raw SQL without parameterization"
+    description: "String concatenation in SQL queries allows injection attacks."
+    severity: critical
+    owasp: "A03:2025"
+    golden_path_check: "grep -rE 'execute_sql.*\\$\\{|rpc.*\\+' src/"
+    mitigation: "Use Supabase client methods (.from().select()) or parameterized queries with $1, $2 placeholders."
+    automated: false
+
+  - id: OWASP-A03-002
+    category: owasp-2025
+    name: "XSS via dangerouslySetInnerHTML"
+    description: "User-provided content rendered as raw HTML without sanitization."
+    severity: high
+    owasp: "A03:2025"
+    golden_path_check: "grep -r 'dangerouslySetInnerHTML' src/"
+    mitigation: "Sanitize with DOMPurify before rendering. Prefer React's default text escaping."
+    automated: true
+
+  - id: OWASP-A03-003
+    category: owasp-2025
+    name: "Command injection in Server Actions"
+    description: "User input passed to exec(), spawn(), or system() calls in server-side code."
+    severity: critical
+    owasp: "A03:2025"
+    golden_path_check: "grep -rE '(exec|spawn|execSync)\\(' src/app/\\|src/features/"
+    mitigation: "Never pass user input to shell commands. Use libraries with parameterized APIs."
+    automated: false
+
+  - id: OWASP-A04-001
+    category: owasp-2025
+    name: "Missing input validation on Server Actions"
+    description: "Server Actions accept user input without Zod validation."
+    severity: high
+    owasp: "A04:2025"
+    golden_path_check: "Verify every 'use server' function validates input with Zod schema"
+    mitigation: "Add Zod schema validation as the first line of every Server Action."
+    automated: false
+
+  - id: OWASP-A05-001
+    category: owasp-2025
+    name: "Default Supabase configuration unchanged"
+    description: "Using default auth settings (no email confirmation, no rate limiting, default JWT expiry)."
+    severity: medium
+    owasp: "A05:2025"
+    golden_path_check: "Check Supabase dashboard Auth settings — email confirmation, rate limits, JWT expiry"
+    mitigation: "Enable email confirmation. Set JWT expiry to 7 days. Enable rate limiting on auth endpoints."
+    automated: false
+
+  - id: OWASP-A05-002
+    category: owasp-2025
+    name: "Missing security headers"
+    description: "Next.js not configured with security headers (CSP, X-Frame-Options, etc.)."
+    severity: medium
+    owasp: "A05:2025"
+    golden_path_check: "Check next.config.ts for headers() configuration"
+    mitigation: "Add security headers in next.config.ts: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy."
+    automated: false
+
+  - id: OWASP-A06-001
+    category: owasp-2025
+    name: "Outdated dependencies with known CVEs"
+    description: "npm packages with published security advisories still in use."
+    severity: high
+    owasp: "A06:2025"
+    golden_path_check: "npm audit — check for critical/high severity advisories"
+    mitigation: "Run npm audit fix. Upgrade or replace packages with critical CVEs."
+    automated: false
+
+  - id: OWASP-A06-002
+    category: owasp-2025
+    name: "Unpinned dependency versions"
+    description: "package.json uses ^ or * for critical dependencies, allowing unexpected updates."
+    severity: medium
+    owasp: "A06:2025"
+    golden_path_check: "Check package.json for unpinned versions on auth/security packages"
+    mitigation: "Pin exact versions for security-critical packages. Use package-lock.json."
+    automated: false
+
+  - id: OWASP-A07-001
+    category: owasp-2025
+    name: "Using getSession() instead of getUser()"
+    description: "Supabase getSession() reads from local storage and can be spoofed. getUser() verifies with the server."
+    severity: high
+    owasp: "A07:2025"
+    golden_path_check: "grep -r 'getSession' src/ — should only appear in middleware, not in data-access code"
+    mitigation: "Use supabase.auth.getUser() for all server-side auth checks."
+    automated: false
+
+  - id: OWASP-A08-001
+    category: owasp-2025
+    name: "Missing CSRF protection on mutations"
+    description: "State-changing API routes accessible without origin verification."
+    severity: medium
+    owasp: "A08:2025"
+    golden_path_check: "Server Actions are CSRF-protected by default in Next.js — verify API routes use origin checking"
+    mitigation: "Prefer Server Actions over API routes for mutations. Add origin checking to API routes."
+    automated: false
+
+  - id: OWASP-A09-001
+    category: owasp-2025
+    name: "No error logging or monitoring"
+    description: "Application has no server-side logging, making incident detection impossible."
+    severity: medium
+    owasp: "A09:2025"
+    golden_path_check: "Search for structured logging (Pino, Winston, Sentry) in src/"
+    mitigation: "Add structured logging with severity levels. Integrate Sentry for error tracking."
+    automated: false
+
+  - id: OWASP-A10-001
+    category: owasp-2025
+    name: "SSRF via unvalidated URL input"
+    description: "Server-side code fetches URLs provided by users without validation."
+    severity: high
+    owasp: "A10:2025"
+    golden_path_check: "grep -rE 'fetch\\(.*req\\.|fetch\\(.*body\\.' src/app/"
+    mitigation: "Validate and whitelist URLs before server-side fetching. Block internal/private IPs."
+    automated: false
+
+  # ========================================
+  # Vibe Coding Risks
+  # ========================================
+
+  - id: VIBE-001
+    category: vibe-coding
+    name: "No code traceability"
+    description: "AI-generated code with no commit messages, PR descriptions, or comments explaining decisions."
+    severity: medium
+    owasp: ""
+    golden_path_check: "git log --oneline — check for meaningful commit messages with feat(F*-T*) format"
+    mitigation: "Use atomic commits with feat(F1-T1) convention. Document AI-generated sections."
+    automated: false
+
+  - id: VIBE-002
+    category: vibe-coding
+    name: "Unvetted dependencies from AI suggestions"
+    description: "AI suggests packages that are outdated, unmaintained, or have low download counts."
+    severity: high
+    owasp: ""
+    golden_path_check: "npm audit + check download counts for unfamiliar packages"
+    mitigation: "Verify every AI-suggested package on npm. Check download counts, last publish date, and repo activity."
+    automated: false
+
+  - id: VIBE-003
+    category: vibe-coding
+    name: "Ghost package injection"
+    description: "AI invents non-existent package names. Attackers create malware packages with those names."
+    severity: high
+    owasp: ""
+    golden_path_check: "Verify each package exists on npm registry before installing"
+    mitigation: "Request npm links from AI. Check download counts. Be suspicious of 0-download packages."
+    automated: false
+
+  - id: VIBE-004
+    category: vibe-coding
+    name: "AI-generated auth logic not reviewed"
+    description: "Authentication/authorization code generated by AI without adversarial review."
+    severity: critical
+    owasp: ""
+    golden_path_check: "Review all files in features/auth/ — verify patterns match Supabase Auth best practices"
+    mitigation: "Use Supabase Auth (don't roll your own). Review all auth code adversarially."
+    automated: false
+
+  - id: VIBE-005
+    category: vibe-coding
+    name: "Prompt exposure in client code"
+    description: "AI system prompts or instructions exposed in client-side JavaScript bundles."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Search for system prompts in src/ client components (files without 'use server')"
+    mitigation: "Keep all AI prompts server-side (Server Actions, API routes, Edge Functions)."
+    automated: false
+
+  - id: VIBE-006
+    category: vibe-coding
+    name: "Prompt injection via user input"
+    description: "User input concatenated into AI prompts without sanitization."
+    severity: high
+    owasp: ""
+    golden_path_check: "Review all AI SDK calls — check if user input is sandboxed from system prompts"
+    mitigation: "Use Vercel AI SDK's structured message format. Never concatenate user input into system prompts."
+    automated: false
+
+  - id: VIBE-007
+    category: vibe-coding
+    name: "Secrets pasted in AI chat context"
+    description: "Developer pastes .env.local contents, API keys, or database URLs into AI chat."
+    severity: high
+    owasp: ""
+    golden_path_check: "N/A — behavioral practice, not detectable in code"
+    mitigation: "Never paste secrets into AI chat. Use env var names (SUPABASE_URL), not values."
+    automated: false
+
+  - id: VIBE-008
+    category: vibe-coding
+    name: "AI technical debt accumulation"
+    description: "Large blocks of AI-generated code no one understands. Modifications introduce bugs."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Look for files >500 lines with no comments or complex logic chains"
+    mitigation: "Review AI output block by block. Add comments explaining non-obvious decisions."
+    automated: false
+
+  - id: VIBE-009
+    category: vibe-coding
+    name: "VCAL-5 with sensitive data handling"
+    description: "Full vibe mode (AI generates, human deploys without review) on app that handles PII or payments."
+    severity: critical
+    owasp: ""
+    golden_path_check: "Determine VCAL level. If VCAL-4/5 and app handles PII/payments: flag as critical."
+    mitigation: "Audit entire codebase adversarially. Treat all code as untrusted."
+    automated: false
+
+  - id: VIBE-010
+    category: vibe-coding
+    name: "Missing error boundaries"
+    description: "AI-generated React components lack error boundaries, causing full-page crashes."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check for ErrorBoundary wrapper in layout.tsx and feature page components"
+    mitigation: "Add React ErrorBoundary at layout and feature levels. Use Next.js error.tsx convention."
+    automated: false
+
+  # ========================================
+  # MCP Security
+  # ========================================
+
+  - id: MCP-001
+    category: mcp-security
+    name: "MCP rug pull — malicious server"
+    description: "Third-party MCP server that exfiltrates data, modifies code maliciously, or escalates privileges."
+    severity: critical
+    owasp: ""
+    golden_path_check: "Review all MCPs in .mcp.json — verify each is official or from trusted source"
+    mitigation: "Only use verified MCPs. Pin versions. Review MCP source before adding."
+    automated: false
+
+  - id: MCP-002
+    category: mcp-security
+    name: "MCP with excessive permissions"
+    description: "MCP server granted more permissions than needed (file system access, network, etc.)."
+    severity: high
+    owasp: ""
+    golden_path_check: "Review .mcp.json — check what each MCP can access"
+    mitigation: "Apply principle of least privilege. Only grant MCPs the permissions they need."
+    automated: false
+
+  - id: MCP-003
+    category: mcp-security
+    name: "Unverified MCP from npm/npx"
+    description: "MCP installed via npx from an unverified npm package."
+    severity: high
+    owasp: ""
+    golden_path_check: "Check npm download counts and repo for each MCP in .mcp.json"
+    mitigation: "Verify MCP packages on npm. Check GitHub repos. Prefer official MCPs."
+    automated: false
+
+  - id: MCP-004
+    category: mcp-security
+    name: "MCP data exfiltration"
+    description: "MCP server sending project data to external endpoints without user knowledge."
+    severity: critical
+    owasp: ""
+    golden_path_check: "Monitor network during MCP execution. Review MCP source for outbound calls."
+    mitigation: "Use network monitoring. Only use open-source MCPs where you can audit the code."
+    automated: false
+
+  - id: MCP-005
+    category: mcp-security
+    name: "MCP version not pinned"
+    description: "MCP installed with @latest, allowing silent malicious updates."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check .mcp.json for @latest or unpinned version references"
+    mitigation: "Pin MCP versions in .mcp.json. Update manually after reviewing changelogs."
+    automated: false
+
+  # ========================================
+  # Golden Path Specific
+  # ========================================
+
+  - id: GP-001
+    category: golden-path
+    name: "Supabase anon key exposed in client without RLS"
+    description: "Supabase anon key is public by design, but without RLS it grants full table access."
+    severity: critical
+    owasp: "A01:2025"
+    golden_path_check: "Verify ALL tables with user data have RLS enabled and policies defined"
+    mitigation: "Enable RLS on every table. The anon key is only safe WITH proper RLS policies."
+    automated: false
+
+  - id: GP-002
+    category: golden-path
+    name: "Next.js API route without auth middleware"
+    description: "API route in app/api/ processes requests without verifying authentication."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Review all files in src/app/api/ — each must call getUser() or use auth middleware"
+    mitigation: "Add auth check to every API route. Prefer Server Actions (auto-CSRF)."
+    automated: false
+
+  - id: GP-003
+    category: golden-path
+    name: "Zustand store with sensitive data"
+    description: "Auth tokens, API keys, or PII stored in Zustand (client-side, inspectable in DevTools)."
+    severity: high
+    owasp: "A02:2025"
+    golden_path_check: "Review all Zustand stores — check for tokens, keys, or PII"
+    mitigation: "Keep sensitive data server-side. Zustand is for UI state, not security state."
+    automated: false
+
+  - id: GP-004
+    category: golden-path
+    name: "Tailwind purge not configured"
+    description: "Unused CSS not purged, bloating bundle size and potentially leaking class names."
+    severity: low
+    owasp: ""
+    golden_path_check: "Check tailwind.config.ts content array includes all source paths"
+    mitigation: "Ensure content array covers src/**/*.{ts,tsx}."
+    automated: false
+
+  - id: GP-005
+    category: golden-path
+    name: "Vercel AI SDK streaming without auth"
+    description: "AI chat/completion endpoint streams responses without verifying the user is authenticated."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Review all AI SDK route handlers — check for auth before streaming"
+    mitigation: "Add auth check at the top of every AI route handler."
+    automated: false
+
+  - id: GP-006
+    category: golden-path
+    name: "OpenRouter API key in client bundle"
+    description: "OPENROUTER_API_KEY or similar exposed in client-side code."
+    severity: critical
+    owasp: "A02:2025"
+    golden_path_check: "grep -r 'OPENROUTER\\|OPENAI\\|ANTHROPIC' src/ — should only appear in server files"
+    mitigation: "AI API keys must only be in .env.local and accessed server-side."
+    automated: true
+
+  - id: GP-007
+    category: golden-path
+    name: "Missing Zod validation on form submissions"
+    description: "Client-side forms submit data to Server Actions without schema validation."
+    severity: medium
+    owasp: "A04:2025"
+    golden_path_check: "Verify each form → Server Action pair has Zod validation"
+    mitigation: "Add Zod schema validation on both client (UX) and server (security) side."
+    automated: false
+
+  - id: GP-008
+    category: golden-path
+    name: "Supabase service role key in client code"
+    description: "The service_role key (bypasses RLS) used in client-side code instead of anon key."
+    severity: critical
+    owasp: "A02:2025"
+    golden_path_check: "grep -r 'service_role\\|SUPABASE_SERVICE' src/ — must only appear in server-side files"
+    mitigation: "Service role key only in Edge Functions or Server Actions. Never in client components."
+    automated: true
+
+  - id: GP-009
+    category: golden-path
+    name: "Missing error.tsx in route segments"
+    description: "Next.js route segments lack error.tsx, causing unhandled errors to crash the page."
+    severity: low
+    owasp: ""
+    golden_path_check: "Check each route group in src/app/ has error.tsx"
+    mitigation: "Add error.tsx to each route segment. Include user-friendly error UI."
+    automated: false
+
+  - id: GP-010
+    category: golden-path
+    name: "Server Component importing client-only library"
+    description: "Server Component imports a browser-only library (e.g., window, document, localStorage)."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Build errors will catch most cases. grep for 'window\\.' in Server Components"
+    mitigation: "Add 'use client' directive or use dynamic imports with ssr: false."
+    automated: false
+
+  - id: GP-011
+    category: golden-path
+    name: "Hardcoded Supabase URL or anon key"
+    description: "Supabase connection details hardcoded instead of using environment variables."
+    severity: high
+    owasp: "A02:2025"
+    golden_path_check: "grep -r 'supabase.co' src/ — should only reference process.env"
+    mitigation: "Always use process.env.NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+    automated: true
+
+  - id: GP-012
+    category: golden-path
+    name: "Missing middleware for protected routes"
+    description: "Protected pages accessible without auth redirect in Next.js middleware."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Check src/middleware.ts exists and protects /dashboard, /settings, /admin routes"
+    mitigation: "Add middleware.ts with Supabase auth check. Redirect unauthenticated to /login."
+    automated: false
+
+  # ========================================
+  # Infrastructure
+  # ========================================
+
+  - id: INFRA-001
+    category: infrastructure
+    name: "No DDoS protection"
+    description: "Application exposed directly without CDN or rate limiting at edge."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check if using Vercel (built-in) or custom domain without Cloudflare"
+    mitigation: "Vercel provides basic DDoS protection. For custom domains, add Cloudflare free tier."
+    automated: false
+
+  - id: INFRA-002
+    category: infrastructure
+    name: "Missing rate limiting on API endpoints"
+    description: "Public API endpoints accept unlimited requests, enabling abuse and cost spikes."
+    severity: high
+    owasp: ""
+    golden_path_check: "Check for rate limiting middleware in API routes"
+    mitigation: "Add rate limiting middleware. Use Vercel Edge Config or upstash/ratelimit."
+    automated: false
+
+  - id: INFRA-003
+    category: infrastructure
+    name: "No automated backups"
+    description: "Database has no point-in-time recovery or automated backup system."
+    severity: high
+    owasp: ""
+    golden_path_check: "Check Supabase dashboard → Database → Backups → PITR enabled"
+    mitigation: "Enable Point-in-Time Recovery in Supabase database settings."
+    automated: false
+
+  - id: INFRA-004
+    category: infrastructure
+    name: "Environment variables not set in Vercel"
+    description: "Required env vars missing from Vercel deployment, causing runtime errors."
+    severity: high
+    owasp: ""
+    golden_path_check: "Compare .env.local keys with Vercel dashboard environment variables"
+    mitigation: "Set all required env vars in Vercel dashboard. Use Vercel CLI: vercel env pull."
+    automated: false
+
+  - id: INFRA-005
+    category: infrastructure
+    name: "No health check endpoint"
+    description: "Application has no /api/health endpoint for monitoring and alerting."
+    severity: low
+    owasp: ""
+    golden_path_check: "Check for src/app/api/health/route.ts"
+    mitigation: "Add /api/health that checks DB connection and returns status."
+    automated: false
+
+  - id: INFRA-006
+    category: infrastructure
+    name: "DNS without DNSSEC"
+    description: "Custom domain DNS records vulnerable to DNS spoofing attacks."
+    severity: low
+    owasp: ""
+    golden_path_check: "Check DNS provider settings for DNSSEC"
+    mitigation: "Enable DNSSEC at DNS provider. Cloudflare enables it with one click."
+    automated: false
+
+  - id: INFRA-007
+    category: infrastructure
+    name: "Missing SPF/DKIM/DMARC for transactional email"
+    description: "Sending emails without proper DNS records causes delivery failures and enables spoofing."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check DNS records for SPF, DKIM, and DMARC entries for sending domain"
+    mitigation: "Configure SPF, DKIM, DMARC records. Use Resend or SendGrid which guide setup."
+    automated: false
+
+  - id: INFRA-008
+    category: infrastructure
+    name: "No secret rotation plan"
+    description: "API keys and tokens never rotated, increasing exposure window."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Ask team: when were API keys last rotated?"
+    mitigation: "Rotate all API keys every 90 days. Use GitHub secret scanning for leaked keys."
+    automated: false
+
+  - id: INFRA-009
+    category: infrastructure
+    name: "Test and production using same database"
+    description: "Staging/test environment shares credentials with production Supabase instance."
+    severity: high
+    owasp: ""
+    golden_path_check: "Compare SUPABASE_URL in .env.local vs production env vars"
+    mitigation: "Use separate Supabase projects for dev/staging/production. Use Stripe test mode keys."
+    automated: false
+
+  - id: INFRA-010
+    category: infrastructure
+    name: "No CDN caching for static assets"
+    description: "Static assets served without cache headers, increasing load times and costs."
+    severity: low
+    owasp: ""
+    golden_path_check: "Vercel handles this by default — check if custom headers override caching"
+    mitigation: "Use Vercel's default caching. Don't override cache-control for static assets."
+    automated: false
+
+  # ========================================
+  # Blog Security Tips (uncovered by Forge)
+  # ========================================
+
+  - id: BLOG-001
+    category: blog-security-tips
+    name: "CORS wildcard in production"
+    description: "Access-Control-Allow-Origin set to * allows any domain to call your API."
+    severity: high
+    owasp: "A05:2025"
+    golden_path_check: "grep for 'Access-Control-Allow-Origin' in next.config.ts, middleware.ts, and API routes"
+    mitigation: "Set CORS to specific allowed domains. Use Next.js middleware for dynamic origin validation."
+    automated: true
+
+  - id: BLOG-002
+    category: blog-security-tips
+    name: "Open redirect vulnerability"
+    description: "Redirect URL from query params (e.g., ?redirect=/dashboard) not validated against allowlist."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "grep -r 'redirect\\|returnUrl\\|callbackUrl' src/ — verify all are validated"
+    mitigation: "Validate redirect URLs against an allowlist. Only allow relative paths or known domains."
+    automated: false
+
+  - id: BLOG-003
+    category: blog-security-tips
+    name: "Supabase Storage bucket publicly readable"
+    description: "Storage bucket configured as public, making all uploaded files accessible via URL."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Check Supabase Storage policies — buckets with user data must have RLS"
+    mitigation: "Set storage policies: users can only access files they uploaded. Never make user-data buckets public."
+    automated: false
+
+  - id: BLOG-004
+    category: blog-security-tips
+    name: "Webhook signature not verified"
+    description: "Webhook endpoint processes requests without verifying the sender's signature."
+    severity: critical
+    owasp: "A07:2025"
+    golden_path_check: "Review all webhook handlers in src/app/api/ — check for signature verification"
+    mitigation: "Verify webhook signatures using provider SDK (e.g., Stripe constructEvent, Clerk verifyWebhook)."
+    automated: false
+
+  - id: BLOG-005
+    category: blog-security-tips
+    name: "No rate limiting on password reset"
+    description: "Password reset endpoint allows unlimited requests, enabling inbox flooding and token brute-force."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check Supabase Auth rate limiting settings — default may be too permissive"
+    mitigation: "Limit password reset to 3 requests per email per hour. Configure in Supabase Auth settings."
+    automated: false
+
+  - id: BLOG-006
+    category: blog-security-tips
+    name: "No session expiration configured"
+    description: "JWT tokens never expire or have very long expiry, meaning stolen tokens grant permanent access."
+    severity: high
+    owasp: "A07:2025"
+    golden_path_check: "Check Supabase Auth settings for JWT expiry and refresh token configuration"
+    mitigation: "Set JWT expiry to 1 hour with refresh token rotation. Configure in Supabase dashboard."
+    automated: false
+
+  - id: BLOG-007
+    category: blog-security-tips
+    name: "Inconsistent API protection"
+    description: "Some API routes have auth/validation while others don't — attackers target the weakest endpoint."
+    severity: high
+    owasp: "A01:2025"
+    golden_path_check: "Review ALL routes in src/app/api/ — each must have auth + validation"
+    mitigation: "Apply consistent middleware pattern. Every API route: auth check → validation → business logic."
+    automated: false
+
+  - id: BLOG-008
+    category: blog-security-tips
+    name: "No AI cost caps"
+    description: "AI endpoints without spending limits — attackers can trigger $10K+ bills overnight."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check AI route handlers for per-user rate limiting and maxTokens config"
+    mitigation: "Set maxTokens in AI SDK calls. Add per-user rate limiting (50 req/day). Set budget alerts in provider dashboard."
+    automated: false
+
+  - id: BLOG-009
+    category: blog-security-tips
+    name: "No account deletion endpoint (GDPR)"
+    description: "Users cannot delete their data. Single GDPR complaint can trigger investigation."
+    severity: high
+    owasp: ""
+    golden_path_check: "Search for account deletion or data export functionality in src/"
+    mitigation: "Create endpoint that removes all user data from DB and Storage. Add to Settings page."
+    automated: false
+
+  - id: BLOG-010
+    category: blog-security-tips
+    name: "Upload size not limited"
+    description: "No file size validation on uploads — users can upload 500MB files, spiraling storage costs."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check upload handlers for file size limits and type validation"
+    mitigation: "Set max file size (5MB for images). Validate file types server-side. Configure in Supabase Storage."
+    automated: false
+
+  - id: BLOG-011
+    category: blog-security-tips
+    name: "No audit log for critical actions"
+    description: "No record of user deletions, role changes, payments, or data exports."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Search for audit_log or activity_log table in migrations"
+    mitigation: "Create audit_log table. Log: user deletions, role changes, payments, data exports, admin actions."
+    automated: false
+
+  - id: BLOG-012
+    category: blog-security-tips
+    name: "Debug console.log in production code"
+    description: "console.log statements with user data visible in browser DevTools."
+    severity: medium
+    owasp: ""
+    golden_path_check: "grep -r 'console.log\\|console.debug' src/ — remove before production"
+    mitigation: "Remove all console.log before deploy. Use server-side structured logging instead."
+    automated: true
+
+  - id: BLOG-013
+    category: blog-security-tips
+    name: "Detailed error messages exposed to users"
+    description: "Full stack traces and internal errors shown to end users, revealing tech stack and file structure."
+    severity: medium
+    owasp: "A09:2025"
+    golden_path_check: "Check error.tsx and API error responses — should return generic messages"
+    mitigation: "Return generic error messages to users. Log detailed errors server-side only."
+    automated: false
+
+  - id: BLOG-014
+    category: blog-security-tips
+    name: "AI self-review not performed"
+    description: "AI-generated code shipped without requesting an adversarial security review."
+    severity: medium
+    owasp: ""
+    golden_path_check: "N/A — process check, part of Security Audit skill #9"
+    mitigation: "After code works, ask AI: 'Act as a Senior Security Engineer. Audit this code for SQL injection, XSS, auth bypass.'"
+    automated: false
+
+  # ========================================
+  # Data Privacy
+  # ========================================
+
+  - id: PRIV-001
+    category: data-privacy
+    name: "PII in server logs"
+    description: "Personally identifiable information (email, name, IP) logged in plain text."
+    severity: high
+    owasp: "A09:2025"
+    golden_path_check: "Review logging calls — check for email, name, or IP in log output"
+    mitigation: "Redact PII in logs. Log user IDs, not emails or names."
+    automated: false
+
+  - id: PRIV-002
+    category: data-privacy
+    name: "No privacy policy page"
+    description: "Application collects user data without a published privacy policy."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check for /privacy or /legal/privacy route"
+    mitigation: "Add privacy policy page. Use a template as starting point, customize for your data practices."
+    automated: false
+
+  - id: PRIV-003
+    category: data-privacy
+    name: "Analytics without consent"
+    description: "Third-party analytics (Google Analytics, Mixpanel) loaded without cookie consent."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Check layout.tsx and _app.tsx for analytics scripts without consent gate"
+    mitigation: "Add cookie consent banner. Load analytics only after user consents."
+    automated: false
+
+  - id: PRIV-004
+    category: data-privacy
+    name: "No data export functionality"
+    description: "Users cannot export their data (GDPR right to data portability)."
+    severity: medium
+    owasp: ""
+    golden_path_check: "Search for data export or data portability functionality in src/"
+    mitigation: "Add data export endpoint that returns all user data as JSON or CSV."
+    automated: false
+
+  - id: PRIV-005
+    category: data-privacy
+    name: "User data retained after account deletion"
+    description: "Deleting account doesn't remove data from all tables, storage, and backups."
+    severity: high
+    owasp: ""
+    golden_path_check: "Review account deletion flow — verify cascade delete across all tables and storage"
+    mitigation: "Use CASCADE on foreign keys. Add explicit cleanup for Storage files and third-party services."
+    automated: false
+
+  - id: PRIV-006
+    category: data-privacy
+    name: "Sensitive data in URL parameters"
+    description: "Tokens, emails, or other sensitive data passed as URL query parameters (visible in logs, history)."
+    severity: medium
+    owasp: "A02:2025"
+    golden_path_check: "grep -r 'router.push.*token\\|router.push.*email' src/"
+    mitigation: "Pass sensitive data in request body or headers, never in URL parameters."
+    automated: false
+
+  - id: PRIV-007
+    category: data-privacy
+    name: "No terms of service"
+    description: "Application available to users without Terms of Service agreement."
+    severity: low
+    owasp: ""
+    golden_path_check: "Check for /terms or /legal/terms route"
+    mitigation: "Add Terms of Service page. Require acceptance during registration."
+    automated: false
