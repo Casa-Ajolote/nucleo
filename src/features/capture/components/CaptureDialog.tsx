@@ -7,6 +7,8 @@ import { X, ChevronDown, ChevronUp, Loader2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { detectContentType, type ContentType } from '@/features/capture/services/detect'
 import { ContentTypeBadge } from '@/features/capture/components/ContentTypeBadge'
+import { createItem, checkDuplicate } from '@/features/capture/services/itemActions'
+import { useItemsStore } from '@/features/dashboard/store/itemsStore'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,12 +32,8 @@ interface FolderOption {
 
 const FOLDERS: FolderOption[] = [
   { id: null, name: 'Sin carpeta', depth: 0 },
-  { id: 'f1', name: 'Claude Code', depth: 0 },
-  { id: 'f2', name: 'Skills', depth: 1, parentId: 'f1' },
-  { id: 'f3', name: 'Ideas', depth: 0 },
 ]
 
-const DUPLICATE_URL = 'https://nextjs.org/docs'
 const MAX_CONTENT_LENGTH = 50_000
 
 // ---------------------------------------------------------------------------
@@ -43,6 +41,7 @@ const MAX_CONTENT_LENGTH = 50_000
 // ---------------------------------------------------------------------------
 
 export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
+  const { activeWorkspaceId, addItem } = useItemsStore()
   const [content, setContent] = useState('')
   const [detectedType, setDetectedType] = useState<ContentType | null>(null)
   const [folderOpen, setFolderOpen] = useState(false)
@@ -106,15 +105,14 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
       const type = detectContentType(value)
       setDetectedType(type)
 
-      // Duplicate check for links (simulated)
+      // Duplicate check for links (real)
       if (duplicateTimerRef.current) {
         clearTimeout(duplicateTimerRef.current)
       }
-      if (type === 'link') {
-        duplicateTimerRef.current = setTimeout(() => {
-          if (value.trim() === DUPLICATE_URL) {
-            setIsDuplicate(true)
-          }
+      if (type === 'link' && activeWorkspaceId) {
+        duplicateTimerRef.current = setTimeout(async () => {
+          const isDup = await checkDuplicate(activeWorkspaceId, value.trim())
+          setIsDuplicate(isDup)
         }, 500)
       }
     } else {
@@ -140,10 +138,28 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
       setError('El contenido es demasiado largo. Máximo 50,000 caracteres.')
       return
     }
+    if (!activeWorkspaceId) {
+      setError('No hay workspace activo. Recarga la página.')
+      return
+    }
 
     setIsSubmitting(true)
 
-    await new Promise<void>((resolve) => setTimeout(resolve, 800))
+    const type = detectedType ?? 'text'
+    const { item, error: createError } = await createItem(
+      activeWorkspaceId,
+      content.trim(),
+      type,
+      selectedFolder
+    )
+
+    if (createError) {
+      setError('No se pudo guardar. Intenta de nuevo.')
+      setIsSubmitting(false)
+      return
+    }
+
+    if (item) addItem(item)
 
     resetState()
     onOpenChange(false)

@@ -3,7 +3,8 @@
 > **Fecha:** 2026-04-08
 > **Modo:** 🔧 Herramienta Interna
 > **Estado del pipeline:** Steps 0-7 completados ✅
-> **Próximo paso:** `/build` — elegir modo de construcción
+> **Próximo paso:** Fase 2 — Items CRUD
+> **Fase 1:** ✅ Completada (2026-04-15) — Pendiente: botón "Crear workspace" sin implementar (Fase 4)
 
 ---
 
@@ -616,7 +617,7 @@ Agregar `<CommandSearch />` a `src/app/(main)/layout.tsx` para que esté disponi
 ## FASE 6: PWA + Import
 
 > **Entregable:** App instalable en iPhone. Import de bookmarks del navegador.
-> **Stories:** US-027, US-028, US-029, US-030, US-031
+> **Stories:** US-027, US-028, US-029, US-030, US-031, US-032
 > **Estimación:** ~2h
 
 ### Subfase 6.1: PWA instalable
@@ -695,6 +696,37 @@ En `src/app/layout.tsx`, agregar en el `<head>`:
 - Import: parsear CSV con `Papa.parse`, validar columnas, crear items en batch
 - Límite: 500 rows por import
 
+### Subfase 6.3: Export a Obsidian
+
+> **Entregable:** Botón "Download .md" en panel de detalle que genera un archivo Obsidian-compatible.
+
+**Tarea 6.3.1 — Utility de export**
+Crear `src/features/dashboard/utils/exportObsidian.ts`:
+- `buildObsidianDocument(item, displayTitle)` — genera el string .md completo (frontmatter YAML + body)
+- `buildObsidianFilename(item, displayTitle)` — genera el nombre `YYYY-MM-DD-slug.md`
+- `downloadObsidianNote(item, displayTitle)` — dispara la descarga del navegador via Blob
+- 100% client-side, sin API routes, sin dependencias nuevas
+
+**Tarea 6.3.2 — Integrar en ItemDetail**
+Modificar `src/features/dashboard/components/ItemDetail.tsx`:
+- Agregar opción "Exportar a Obsidian" con icono `Download` en HeaderMenu (entre Editar y Eliminar)
+- Agregar botón icon-only en sticky footer (entre Editar y Eliminar)
+
+**Tarea 6.3.3 — Integrar en ItemCard**
+Modificar `src/features/dashboard/components/ItemCard.tsx`:
+- Agregar "Exportar .md" en CardMenu (entre Mover y Eliminar)
+
+**Mapping content_type → frontmatter `type`:**
+- `link` → `article`
+- `text` → `note`
+- `markdown` → `note`
+- `command` → `prompt`
+
+**Formato del archivo:**
+- Filename: `YYYY-MM-DD-slug-del-titulo.md`
+- Frontmatter: `type`, `source` (nucleo), `url`, `date_saved`, `tags`, `topic`
+- Body: `# Título`, `## Contenido`, `## Por qué lo guardé`, `## Links relacionados`
+
 **Verificación Fase 6:**
 - [ ] En iOS Safari: "Añadir a pantalla de inicio" muestra el ícono de Nucleo
 - [ ] App instalada abre en modo standalone (sin barra del browser)
@@ -702,6 +734,11 @@ En `src/app/layout.tsx`, agregar en el `<head>`:
 - [ ] CaptureDialog no sube bajo el teclado virtual de iOS
 - [ ] Import de bookmarks HTML: parsea correctamente el formato de Chrome/Firefox/Safari
 - [ ] Import de 50 bookmarks → 50 items creados con status=pending → IA los procesa en background
+- [ ] Botón "Exportar a Obsidian" visible en HeaderMenu y footer del panel de detalle
+- [ ] Archivo descargado tiene nombre `YYYY-MM-DD-slug.md`
+- [ ] Frontmatter YAML válido (type, source, url, date_saved, tags, topic)
+- [ ] Tildes y caracteres especiales normalizados en el filename
+- [ ] Descarga funciona en Chrome, Safari iOS y Safari Mac
 
 ---
 

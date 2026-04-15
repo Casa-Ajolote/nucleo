@@ -11,10 +11,12 @@ import {
   FolderOpen,
   Trash2,
   RefreshCw,
+  Download,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { cn } from '@/lib/utils'
 import type { NucleoItem, ContentType } from '../types'
+import { downloadObsidianNote } from '../utils/exportObsidian'
 
 // ---------------------------------------------------------------------------
 // Relative time helper
@@ -128,9 +130,11 @@ function TagChips({ tags }: { tags: string[] }) {
 function CardMenu({
   visible,
   onDelete,
+  onExport,
 }: {
   visible: boolean
   onDelete?: () => void
+  onExport?: () => void
 }) {
   return (
     <DropdownMenu.Root>
@@ -174,6 +178,14 @@ function CardMenu({
           >
             <FolderOpen size={13} className="text-muted" />
             Mover
+          </DropdownMenu.Item>
+
+          <DropdownMenu.Item
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-ink cursor-pointer outline-none hover:bg-hover rounded-sm mx-1"
+            onSelect={onExport}
+          >
+            <Download size={13} className="text-muted" />
+            Exportar .md
           </DropdownMenu.Item>
 
           <DropdownMenu.Separator className="my-1 h-px bg-border mx-1" />
@@ -236,15 +248,18 @@ export function ItemCard({ item, onDelete }: ItemCardProps) {
       <CardMenu
         visible={hovered}
         onDelete={onDelete ? () => onDelete(item.id) : undefined}
+        onExport={() => downloadObsidianNote(item, displayTitle)}
       />
 
       {/* Body */}
-      {item.status === 'processing' ? (
+      {item.status === 'processing' || item.status === 'pending' ? (
         <ProcessingOverlay />
       ) : item.status === 'failed' ? (
         <FailedBody item={item} />
       ) : (
-        <ReadyBody item={item} />
+        <div className="animate-in fade-in duration-300">
+          <ReadyBody item={item} />
+        </div>
       )}
     </article>
   )

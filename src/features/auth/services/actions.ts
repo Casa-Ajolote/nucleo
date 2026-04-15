@@ -25,6 +25,19 @@ export async function loginAction(formData: FormData) {
     return { error: 'Servicio temporalmente no disponible. Intenta en unos minutos.' }
   }
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: ws } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('user_id', user.id)
+      .order('position')
+      .limit(1)
+      .single()
+
+    if (ws) redirect(`/w/${ws.id}`)
+  }
+
   redirect('/dashboard')
 }
 
@@ -40,7 +53,7 @@ export async function signupAction(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signUp(parsed.data)
+  const { data, error } = await supabase.auth.signUp(parsed.data)
 
   if (error) {
     if (error.message?.includes('already registered')) {
@@ -49,11 +62,42 @@ export async function signupAction(formData: FormData) {
     return { error: 'No pudimos crear tu cuenta. Intenta nuevamente.' }
   }
 
-  redirect('/dashboard')
+  if (data.session && data.user) {
+    await supabase.from('workspaces').insert([
+      { user_id: data.user.id, name: 'Personal', slug: 'personal', icon: '📁', position: 0 },
+      { user_id: data.user.id, name: 'Trabajo', slug: 'trabajo', icon: '💼', position: 1 },
+    ])
+
+    const { data: ws } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('user_id', data.user.id)
+      .order('position')
+      .limit(1)
+      .single()
+
+    redirect(ws ? `/w/${ws.id}` : '/dashboard')
+  }
+
+  redirect('/login?message=check-email')
 }
 
 export async function logoutAction() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
+}
+
+export async function getWorkspacesAction() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('workspaces')
+    .select('id, name, slug, icon, position')
+    .eq('user_id', user.id)
+    .order('position')
+
+  return data ?? []
 }
