@@ -695,10 +695,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Footer */}
       <div className="py-2 border-t shrink-0" style={{ borderColor: 'var(--color-border)' }}>
-        <button type="button" className="sidebar-item">
+        <Link href="/import" className="sidebar-item" onClick={() => onClose?.()}>
           <Import size={14} className="shrink-0" />
           <span>Importar</span>
-        </button>
+        </Link>
         <button type="button" className="sidebar-item">
           <Settings size={14} className="shrink-0" />
           <span>Configuración</span>

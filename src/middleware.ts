@@ -31,7 +31,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAuthRoute = pathname === '/login' || pathname === '/signup'
-  const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/w')
+  const isProtected =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/w') ||
+    pathname.startsWith('/import')
 
   // Validate `next` redirect param — only allow internal paths (prevent open redirect)
   function isSafeRedirectPath(path: string): boolean {
