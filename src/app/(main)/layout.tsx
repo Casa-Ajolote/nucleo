@@ -6,7 +6,6 @@ import Link from 'next/link'
 import {
   ChevronRight,
   Plus,
-  Search,
   Menu,
   X,
   LogOut,
@@ -16,8 +15,10 @@ import {
   Import,
   Check,
 } from 'lucide-react'
+import { SearchBar, SearchBarDesktop } from '@/features/search/components/SearchBar'
 import { cn } from '@/lib/utils'
 import { CaptureDialog } from '@/features/capture/components/CaptureDialog'
+import { InstallBanner } from '@/features/pwa/components/InstallBanner'
 import { createClient } from '@/lib/supabase/client'
 import { logoutAction } from '@/features/auth/services/actions'
 import { useOrganizeStore, buildFolderTree } from '@/features/organize/store/organizeStore'
@@ -822,14 +823,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           <span className="flex-1 text-sm font-medium" style={{ color: 'var(--color-ink)' }}>
             Nucleo
           </span>
-          <button
-            type="button"
-            className="p-1 rounded transition-colors"
-            style={{ color: 'var(--color-muted)' }}
-            aria-label="Buscar"
-          >
-            <Search size={18} />
-          </button>
+          <SearchBar />
         </header>
 
         {/* Desktop top bar */}
@@ -837,25 +831,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           className="hidden lg:flex items-center gap-3 px-6 py-3 sticky top-0 z-30 border-b"
           style={{ background: 'var(--color-canvas)', borderColor: 'var(--color-border)' }}
         >
-          <div
-            className="flex items-center gap-2 flex-1 max-w-sm rounded px-3 py-1.5 border transition-colors cursor-text"
-            style={{ borderColor: 'var(--color-border)', background: 'var(--color-sidebar)' }}
-          >
-            <Search size={14} style={{ color: 'var(--color-muted)' }} />
-            <span className="text-sm" style={{ color: 'var(--color-placeholder)' }}>
-              Buscar…
-            </span>
-            <span
-              className="ml-auto text-xs px-1 rounded"
-              style={{
-                color: 'var(--color-placeholder)',
-                background: 'var(--color-hover)',
-                fontSize: '11px',
-              }}
-            >
-              ⌘K
-            </span>
-          </div>
+          <SearchBarDesktop />
         </header>
 
         <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">{children}</main>
@@ -870,6 +846,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       >
         <Plus size={22} strokeWidth={2} />
       </button>
+
+      <InstallBanner />
 
       <CaptureDialog open={captureOpen} onOpenChange={setCaptureOpen} />
     </div>
