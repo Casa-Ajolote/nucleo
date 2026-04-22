@@ -14,6 +14,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Clock,
+  Download,
 } from 'lucide-react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -22,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { CopyButton } from './CopyButton'
 import { formatRelativeTime } from './ItemCard'
 import type { NucleoItem, ContentType } from '../types'
+import { downloadObsidianNote } from '../utils/exportObsidian'
 
 // ---------------------------------------------------------------------------
 // Content type label
@@ -335,9 +337,10 @@ function DeleteConfirm({ open, onOpenChange, itemTitle, onConfirm }: DeleteConfi
 interface HeaderMenuProps {
   onEdit: () => void
   onDelete: () => void
+  onExport: () => void
 }
 
-function HeaderMenu({ onEdit, onDelete }: HeaderMenuProps) {
+function HeaderMenu({ onEdit, onDelete, onExport }: HeaderMenuProps) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -369,6 +372,13 @@ function HeaderMenu({ onEdit, onDelete }: HeaderMenuProps) {
           >
             <Pencil size={13} className="text-muted" />
             Editar
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={onExport}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer outline-none hover:bg-hover rounded-sm mx-1 text-ink"
+          >
+            <Download size={13} className="text-muted" />
+            Exportar a Obsidian
           </DropdownMenu.Item>
           <DropdownMenu.Separator
             className="my-1 h-px mx-1"
@@ -434,6 +444,7 @@ function PanelContent({ item, onClose, onEdit, onDelete }: PanelContentProps) {
         <HeaderMenu
           onEdit={() => onEdit(item)}
           onDelete={() => setDeleteOpen(true)}
+          onExport={() => downloadObsidianNote(item, displayTitle)}
         />
       </div>
 
@@ -564,6 +575,18 @@ function PanelContent({ item, onClose, onEdit, onDelete }: PanelContentProps) {
         >
           <Pencil size={14} />
           Editar
+        </button>
+        <button
+          onClick={() => downloadObsidianNote(item, displayTitle)}
+          className="flex items-center justify-center py-2 px-3 rounded-lg transition-colors hover:bg-hover"
+          style={{
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-ink)',
+          }}
+          aria-label="Exportar a Obsidian"
+          title="Exportar a Obsidian"
+        >
+          <Download size={14} />
         </button>
         <button
           onClick={() => setDeleteOpen(true)}

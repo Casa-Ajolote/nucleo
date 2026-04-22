@@ -63,3 +63,15 @@ Thumbs.db
 # Supabase
 supabase/.branches
 supabase/.temp
+
+# QA screenshots
+qa-*.png
+debug-*.png
+qa-f*-*.png
+
+# Test artifacts
+test-results/
+tsconfig.tsbuildinfo
+
+# Playwright MCP
+.playwright-mcp/
