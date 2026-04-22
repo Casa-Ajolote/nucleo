@@ -1,15 +1,27 @@
 'use client'
 
-import { Inbox, SearchX } from 'lucide-react'
+import { Inbox, SearchX, FolderOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface EmptyStateProps {
-  variant: 'empty-workspace' | 'no-results'
+  variant: 'empty-workspace' | 'no-results' | 'empty-folder'
   onCapture?: () => void
   onClearFilters?: () => void
 }
 
 export function EmptyState({ variant, onCapture, onClearFilters }: EmptyStateProps) {
+  if (variant === 'empty-folder') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+        <FolderOpen size={48} className="text-muted" aria-hidden="true" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-ink">Esta carpeta está vacía</p>
+          <p className="text-xs text-muted">Guarda algo aquí para verlo en esta carpeta</p>
+        </div>
+      </div>
+    )
+  }
+
   if (variant === 'empty-workspace') {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">

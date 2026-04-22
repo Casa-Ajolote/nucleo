@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { ItemCard } from './ItemCard'
 import { FilterBar } from './FilterBar'
 import { EmptyState } from './EmptyState'
 import { ItemDetail } from './ItemDetail'
+import { ItemEditForm } from './ItemEditForm'
 import { useItemsStore } from '../store/itemsStore'
+import { useOrganizeStore } from '@/features/organize/store/organizeStore'
 import { deleteItem } from '@/features/capture/services/itemActions'
 import { createClient } from '@/lib/supabase/client'
 import type { NucleoItem } from '../types'
@@ -24,8 +27,20 @@ interface Props {
 
 export function WorkspaceDashboard({ workspace, initialItems }: Props) {
   const { items, setItems, setActiveWorkspace, removeItem } = useItemsStore()
+  const { activeFilter, clearFilter } = useOrganizeStore()
   const [selectedItem, setSelectedItem] = useState<NucleoItem | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<NucleoItem | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+
+  const filteredItems = activeFilter
+    ? items.filter((item) => {
+        if (activeFilter.type === 'folder') return item.folder_id === activeFilter.id
+        if (activeFilter.type === 'category') return item.category === activeFilter.id
+        if (activeFilter.type === 'tag') return item.tags.includes(activeFilter.name)
+        return true
+      })
+    : items
 
   useEffect(() => {
     setActiveWorkspace(workspace.id)
@@ -96,11 +111,36 @@ export function WorkspaceDashboard({ workspace, initialItems }: Props) {
     <div className="space-y-0">
       <FilterBar total={items.length} workspaceName={workspace.name} />
 
-      {items.length === 0 ? (
-        <EmptyState variant="empty-workspace" />
+      {activeFilter && (
+        <div
+          className="flex items-center justify-between px-4 py-2 mb-3 rounded-lg text-sm"
+          style={{
+            background: 'var(--color-selected)',
+            color: 'var(--color-accent)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
+          <span>
+            {activeFilter.type === 'folder' ? '📁' : activeFilter.type === 'tag' ? '🏷️' : '🗂️'}{' '}
+            {activeFilter.name}
+          </span>
+          <button
+            type="button"
+            onClick={clearFilter}
+            aria-label="Limpiar filtro"
+            className="flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70"
+          >
+            <X size={12} aria-hidden="true" />
+            Limpiar
+          </button>
+        </div>
+      )}
+
+      {filteredItems.length === 0 ? (
+        <EmptyState variant={activeFilter ? 'empty-folder' : 'empty-workspace'} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <div
               key={item.id}
               onClick={() => handleCardClick(item)}
@@ -122,8 +162,18 @@ export function WorkspaceDashboard({ workspace, initialItems }: Props) {
         item={selectedItem}
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        onEdit={() => {}}
+        onEdit={(item) => {
+          setEditingItem(item)
+          setEditOpen(true)
+        }}
         onDelete={handleDetailDelete}
+      />
+
+      <ItemEditForm
+        item={editingItem}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSave={(_id, _data) => setEditOpen(false)}
       />
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as Dialog from '@radix-ui/react-dialog'
@@ -9,25 +9,10 @@ import { X, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TagChipInput } from './TagChipInput'
 import { editItemSchema, type EditItemSchema } from '../services/editSchema'
+import { updateItem } from '@/features/capture/services/itemActions'
+import { useItemsStore } from '../store/itemsStore'
+import { useOrganizeStore } from '@/features/organize/store/organizeStore'
 import type { NucleoItem } from '../types'
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-const CATEGORIES = [
-  { value: '', label: 'Sin categoría' },
-  { value: 'Development', label: 'Development' },
-  { value: 'AI', label: 'AI' },
-  { value: 'Design', label: 'Design' },
-  { value: 'Business', label: 'Business' },
-]
-
-const FOLDERS = [
-  { value: '', label: 'Sin carpeta' },
-  { value: 'f1', label: '📁 Claude Code' },
-  { value: 'f2', label: '  └ 📁 Skills' },
-  { value: 'f3', label: '📁 Ideas' },
-]
 
 // ---------------------------------------------------------------------------
 // Shared input styles
@@ -58,6 +43,22 @@ export function ItemEditForm({ item, open, onOpenChange, onSave }: ItemEditFormP
   const categoryId = useId()
   const tagsId = useId()
   const folderId = useId()
+  const [serverError, setServerError] = useState<string | null>(null)
+
+  const { folders: storeFolders, categories: storeCategories } = useOrganizeStore()
+
+  const folderOptions = [
+    { value: '', label: 'Sin carpeta' },
+    ...storeFolders.map((f) => ({
+      value: f.id,
+      label: f.depth === 0 ? `📁 ${f.name}` : `  └ 📁 ${f.name}`,
+    })),
+  ]
+
+  const categoryOptions = [
+    { value: '', label: 'Sin categoría' },
+    ...storeCategories.map((c) => ({ value: c.id, label: c.name })),
+  ]
 
   const form = useForm<EditItemSchema>({
     resolver: zodResolver(editItemSchema),
@@ -98,7 +99,27 @@ export function ItemEditForm({ item, open, onOpenChange, onSave }: ItemEditFormP
   }
 
   async function onSubmit(data: EditItemSchema) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 600))
+    setServerError(null)
+
+    const { error } = await updateItem(item!.id, {
+      title: data.title,
+      category_id: data.category || null,
+      folder_id: data.folder_id || null,
+      tags: data.tags,
+    })
+
+    if (error) {
+      setServerError(error)
+      return
+    }
+
+    useItemsStore.getState().updateItem(item!.id, {
+      title: data.title,
+      category: data.category ?? null,
+      folder_id: data.folder_id ?? null,
+      tags: data.tags,
+    })
+
     onSave(item!.id, data)
     reset(data)
     onOpenChange(false)
@@ -230,7 +251,7 @@ export function ItemEditForm({ item, open, onOpenChange, onSave }: ItemEditFormP
                       'appearance-none pr-8 cursor-pointer'
                     )}
                   >
-                    {CATEGORIES.map((cat) => (
+                    {categoryOptions.map((cat) => (
                       <option key={cat.value} value={cat.value}>
                         {cat.label}
                       </option>
@@ -278,7 +299,7 @@ export function ItemEditForm({ item, open, onOpenChange, onSave }: ItemEditFormP
                       'appearance-none pr-8 cursor-pointer'
                     )}
                   >
-                    {FOLDERS.map((folder) => (
+                    {folderOptions.map((folder) => (
                       <option key={folder.value} value={folder.value}>
                         {folder.label}
                       </option>
@@ -294,33 +315,40 @@ export function ItemEditForm({ item, open, onOpenChange, onSave }: ItemEditFormP
             </div>
 
             {/* Footer — sticky */}
-            <div className="sticky bottom-0 bg-canvas border-t border-border px-4 py-3 flex justify-end gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={requestClose}
-                className={cn(
-                  'px-3 py-1.5 rounded text-sm text-muted font-medium',
-                  'hover:bg-hover hover:text-ink',
-                  'transition-colors duration-150'
-                )}
-              >
-                Cancelar
-              </button>
+            <div className="sticky bottom-0 bg-canvas border-t border-border px-4 py-3 flex flex-col gap-2 shrink-0">
+              {serverError && (
+                <p className="text-xs text-error" role="alert">
+                  {serverError}
+                </p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={requestClose}
+                  className={cn(
+                    'px-3 py-1.5 rounded text-sm text-muted font-medium',
+                    'hover:bg-hover hover:text-ink',
+                    'transition-colors duration-150'
+                  )}
+                >
+                  Cancelar
+                </button>
 
-              <button
-                type="submit"
-                form="item-edit-form"
-                disabled={isSubmitting}
-                aria-busy={isSubmitting}
-                className={cn(
-                  'px-4 py-1.5 rounded text-sm font-medium text-white',
-                  'bg-accent hover:bg-accent-hover',
-                  'transition-colors duration-150',
-                  'disabled:opacity-60 disabled:cursor-not-allowed'
-                )}
-              >
-                {isSubmitting ? 'Guardando…' : 'Guardar'}
-              </button>
+                <button
+                  type="submit"
+                  form="item-edit-form"
+                  disabled={isSubmitting}
+                  aria-busy={isSubmitting}
+                  className={cn(
+                    'px-4 py-1.5 rounded text-sm font-medium text-white',
+                    'bg-accent hover:bg-accent-hover',
+                    'transition-colors duration-150',
+                    'disabled:opacity-60 disabled:cursor-not-allowed'
+                  )}
+                >
+                  {isSubmitting ? 'Guardando…' : 'Guardar'}
+                </button>
+              </div>
             </div>
           </form>
         </Dialog.Content>

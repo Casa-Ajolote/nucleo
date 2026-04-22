@@ -9,6 +9,7 @@ import { detectContentType, type ContentType } from '@/features/capture/services
 import { ContentTypeBadge } from '@/features/capture/components/ContentTypeBadge'
 import { createItem, checkDuplicate } from '@/features/capture/services/itemActions'
 import { useItemsStore } from '@/features/dashboard/store/itemsStore'
+import { useOrganizeStore } from '@/features/organize/store/organizeStore'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,10 +31,6 @@ interface FolderOption {
 // Constants
 // ---------------------------------------------------------------------------
 
-const FOLDERS: FolderOption[] = [
-  { id: null, name: 'Sin carpeta', depth: 0 },
-]
-
 const MAX_CONTENT_LENGTH = 50_000
 
 // ---------------------------------------------------------------------------
@@ -42,6 +39,12 @@ const MAX_CONTENT_LENGTH = 50_000
 
 export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
   const { activeWorkspaceId, addItem } = useItemsStore()
+  const { folders: storeFolders } = useOrganizeStore()
+
+  const folderOptions: FolderOption[] = [
+    { id: null, name: 'Sin carpeta', depth: 0 },
+    ...storeFolders.map((f) => ({ id: f.id, name: f.name, depth: f.depth, parentId: f.parent_id ?? undefined })),
+  ]
   const [content, setContent] = useState('')
   const [detectedType, setDetectedType] = useState<ContentType | null>(null)
   const [folderOpen, setFolderOpen] = useState(false)
@@ -345,7 +348,7 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
                     <ChevronDown size={12} aria-hidden="true" />
                   )}
                   {selectedFolder
-                    ? `Carpeta: ${FOLDERS.find((f) => f.id === selectedFolder)?.name ?? 'Sin carpeta'}`
+                    ? `Carpeta: ${folderOptions.find((f) => f.id === selectedFolder)?.name ?? 'Sin carpeta'}`
                     : '+ Guardar en carpeta…'}
                 </button>
               </Collapsible.Trigger>
@@ -357,7 +360,7 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
                   role="listbox"
                   aria-label="Seleccionar carpeta"
                 >
-                  {FOLDERS.map((folder) => {
+                  {folderOptions.map((folder) => {
                     const isSelected = selectedFolder === folder.id
                     const paddingLeft = 12 + folder.depth * 12
 
